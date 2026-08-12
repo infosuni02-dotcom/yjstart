@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>세계시간</title>
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --card-bg: #ffffff;
+    --text: #1b1e24;
+    --sub: #6b7280;
+    --accent: #2563eb;
+    --border: #e5e7eb;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --night: #eef2ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --card-bg: #1e2128;
+      --text: #f1f2f4;
+      --sub: #9aa1ac;
+      --accent: #60a5fa;
+      --border: #2c3038;
+      --shadow: 0 1px 3px rgba(0,0,0,0.4);
+      --night: #262b38;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Malgun Gothic", sans-serif;
+    padding: 24px 16px 60px;
+  }
+  header {
+    max-width: 1000px;
+    margin: 0 auto 28px;
+    text-align: center;
+  }
+  header h1 {
+    font-size: 1.7rem;
+    margin: 0 0 6px;
+    letter-spacing: -0.02em;
+  }
+  header p {
+    margin: 0;
+    color: var(--sub);
+    font-size: 0.95rem;
+  }
+  .toolbar {
+    max-width: 1000px;
+    margin: 0 auto 20px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .toolbar select, .toolbar button {
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .toolbar button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+  }
+  .grid {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 18px 16px;
+    box-shadow: var(--shadow);
+    position: relative;
+    transition: transform 0.15s ease;
+  }
+  .card.night {
+    background: var(--night);
+  }
+  .card .remove {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: var(--sub);
+    font-size: 1rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px;
+  }
+  .card .remove:hover { color: #ef4444; }
+  .city {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 2px;
+    padding-right: 20px;
+  }
+  .tz-name {
+    font-size: 0.75rem;
+    color: var(--sub);
+    margin-bottom: 12px;
+  }
+  .time {
+    font-size: 2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .date {
+    font-size: 0.85rem;
+    color: var(--sub);
+    margin-top: 4px;
+  }
+  .offset {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 0.72rem;
+    color: var(--accent);
+    background: rgba(37, 99, 235, 0.1);
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+  footer {
+    text-align: center;
+    margin-top: 40px;
+    color: var(--sub);
+    font-size: 0.8rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🌍 World Clock</h1>
+  <p id="local-now">불러오는 중...</p>
+</header>
+
+<div class="toolbar">
+  <select id="city-select"></select>
+  <button id="add-btn">도시 추가</button>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<footer>브라우저 시간대 기준으로 실시간 갱신됩니다.</footer>
+
+<script>
+  const ALL_CITIES = [
+    { name: "서울", tz: "Asia/Seoul" },
+    { name: "도쿄", tz: "Asia/Tokyo" },
+    { name: "베이징", tz: "Asia/Shanghai" },
+    { name: "홍콩", tz: "Asia/Hong_Kong" },
+    { name: "싱가포르", tz: "Asia/Singapore" },
+    { name: "델리", tz: "Asia/Kolkata" },
+    { name: "두바이", tz: "Asia/Dubai" },
+    { name: "모스크바", tz: "Europe/Moscow" },
+    { name: "이스탄불", tz: "Europe/Istanbul" },
+    { name: "런던", tz: "Europe/London" },
+    { name: "파리", tz: "Europe/Paris" },
+    { name: "베를린", tz: "Europe/Berlin" },
+    { name: "뉴욕", tz: "America/New_York" },
+    { name: "시카고", tz: "America/Chicago" },
+    { name: "로스앤젤레스", tz: "America/Los_Angeles" },
+    { name: "상파울루", tz: "America/Sao_Paulo" },
+    { name: "시드니", tz: "Australia/Sydney" },
+    { name: "오클랜드", tz: "Pacific/Auckland" },
+    { name: "호놀룰루", tz: "Pacific/Honolulu" },
+    { name: "카이로", tz: "Africa/Cairo" },
+  ];
+
+  const DEFAULT_SELECTED = ["Asia/Seoul", "America/New_York", "Europe/London", "Asia/Tokyo", "Australia/Sydney"];
+
+  const grid = document.getElementById("grid");
+  const citySelect = document.getElementById("city-select");
+  const addBtn = document.getElementById("add-btn");
+  const localNow = document.getElementById("local-now");
+
+  function loadSelected() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("worldclock-cities"));
+      if (Array.isArray(saved) && saved.length) return saved;
+    } catch (e) {}
+    return DEFAULT_SELECTED.slice();
+  }
+
+  function saveSelected(list) {
+    localStorage.setItem("worldclock-cities", JSON.stringify(list));
+  }
+
+  let selectedTz = loadSelected();
+
+  function populateSelect() {
+    citySelect.innerHTML = "";
+    ALL_CITIES.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.tz;
+      opt.textContent = `${c.name} (${c.tz})`;
+      citySelect.appendChild(opt);
+    });
+  }
+
+  function buildCards() {
+    grid.innerHTML = "";
+    selectedTz.forEach(tz => {
+      const meta = ALL_CITIES.find(c => c.tz === tz) || { name: tz, tz };
+      const card = document.createElement("div");
+      card.className = "card";
+      card.dataset.tz = tz;
+      card.innerHTML = `
+        <button class="remove" title="삭제">✕</button>
+        <div class="city">${meta.name}</div>
+        <div class="tz-name">${tz}</div>
+        <div class="time">--:--:--</div>
+        <div class="date">-</div>
+        <div class="offset">UTC --</div>
+      `;
+      card.querySelector(".remove").addEventListener("click", () => {
+        selectedTz = selectedTz.filter(t => t !== tz);
+        saveSelected(selectedTz);
+        buildCards();
+      });
+      grid.appendChild(card);
+    });
+    tick();
+  }
+
+  function getOffsetLabel(tz, date) {
+    const dtf = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "shortOffset" });
+    const part = dtf.formatToParts(date).find(p => p.type === "timeZoneName");
+    return part ? part.value.replace("GMT", "UTC") : "";
+  }
+
+  function tick() {
+    const now = new Date();
+
+    localNow.textContent = "내 위치 현재 시각: " + now.toLocaleString("ko-KR", {
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      year: "numeric", month: "long", day: "numeric", weekday: "short"
+    });
+
+    document.querySelectorAll(".card").forEach(card => {
+      const tz = card.dataset.tz;
+      const timeStr = now.toLocaleTimeString("ko-KR", { timeZone: tz, hour12: false });
+      const dateStr = now.toLocaleDateString("ko-KR", { timeZone: tz, month: "short", day: "numeric", weekday: "short" });
+      const hour = parseInt(now.toLocaleString("en-US", { timeZone: tz, hour12: false, hour: "2-digit" }), 10);
+
+      card.querySelector(".time").textContent = timeStr;
+      card.querySelector(".date").textContent = dateStr;
+      card.querySelector(".offset").textContent = getOffsetLabel(tz, now);
+      card.classList.toggle("night", hour < 6 || hour >= 20);
+    });
+  }
+
+  addBtn.addEventListener("click", () => {
+    const tz = citySelect.value;
+    if (!selectedTz.includes(tz)) {
+      selectedTz.push(tz);
+      saveSelected(selectedTz);
+      buildCards();
+    }
+  });
+
+  populateSelect();
+  buildCards();
+  setInterval(tick, 1000);
+</script>
+
+</body>
+</html>
