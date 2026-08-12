@@ -234,6 +234,7 @@
 <div class="toolbar">
   <select id="city-select"></select>
   <button id="add-btn">도시 추가</button>
+  <button id="sound-toggle" title="효과음 켜기/끄기">🔊</button>
 </div>
 
 <div class="grid" id="grid"></div>
@@ -269,7 +270,43 @@
   const grid = document.getElementById("grid");
   const citySelect = document.getElementById("city-select");
   const addBtn = document.getElementById("add-btn");
+  const soundToggle = document.getElementById("sound-toggle");
   const localNow = document.getElementById("local-now");
+
+  let soundEnabled = true;
+  let audioCtx = null;
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+  }
+
+  function playFlipSound() {
+    if (!soundEnabled || !audioCtx) return;
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(1200, t);
+    osc.frequency.exponentialRampToValueAtTime(300, t + 0.04);
+    gain.gain.setValueAtTime(0.05, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.05);
+  }
+
+  document.addEventListener("click", ensureAudio, { once: true });
+  document.addEventListener("keydown", ensureAudio, { once: true });
+
+  soundToggle.addEventListener("click", () => {
+    ensureAudio();
+    soundEnabled = !soundEnabled;
+    soundToggle.textContent = soundEnabled ? "🔊" : "🔇";
+  });
 
   function loadSelected() {
     try {
@@ -316,6 +353,8 @@
 
     back.dataset.value = top.dataset.value;
     backBottom.dataset.value = newVal;
+
+    playFlipSound();
 
     digit.classList.remove("flipping");
     void digit.offsetWidth;
